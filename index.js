@@ -13,7 +13,6 @@ app.use(cors());
 
 app.use('/public', express.static(`${process.cwd()}/public`));
 
-
 app.get('/', function(req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
@@ -28,39 +27,41 @@ const shortUrlMap = new Map()
 app.post('/api/shorturl', parseURLEncoded, async function (req, res) {
   try {
     const url = new URL(req.body.url)
+
     await dns.lookup(url.host, (err, address) => {
+
       if (err && url.hostname !== 'localhost') {
         console.log('Website does not exist')
         res.json({ error: 'invalid url' })
       }
       else {
-        // First iteration
+        const response = {
+          original_url: url.href,
+        }
+
+        // First iteration - map is empty
         if (shortUrlMap.size === 0) {
           shortUrlMap.set(url.href, 1)
-          res.json({ 
-            original_url: url.href, 
-            short_url: 1,
-            map: Array.from(shortUrlMap),
-          })
+
+          response.short_url = 1
         }
         // Check if URL already exists in map
         else if (shortUrlMap.has(url.href)) {
-          res.json({
-            original_url: url.href, 
-            short_url: shortUrlMap.get(url.href), 
-            map: Array.from(shortUrlMap),
-          })
+          response.short_url = shortUrlMap.get(url.href)
         }
         // Add new URL to map
         else {
           const nextIterator = shortUrlMap.size + 1
           shortUrlMap.set(url.href, nextIterator)
-          res.json({ 
-            original_url: url.href, 
-            short_url: nextIterator,
-            map: Array.from(shortUrlMap),
-          })
+
+          response.short_url = nextIterator
         }
+
+        res.json({
+          ...response,
+          // For testing in Postman
+          map: Array.from(shortUrlMap),
+        })
       }
     })
   }
